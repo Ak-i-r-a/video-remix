@@ -1,0 +1,790 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>YouTube Studio Playlist</title>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.15.4/css/all.min.css">
+    <style>
+        :root {
+            --bg: #0f0f12;
+            --surface: #18181f;
+            --surface-2: #22222c;
+            --border: rgba(255, 255, 255, 0.08);
+            --text: #f4f4f6;
+            --muted: #9b9ba8;
+            --accent: #ff2a38;
+            --accent-hover: #e01b28;
+            --radius: 14px;
+        }
+
+        * {
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: Inter, system-ui, -apple-system, 'Segoe UI', Roboto, Arial, sans-serif;
+            line-height: 1.5;
+            margin: 0;
+            padding: 24px 16px 48px;
+            background: radial-gradient(circle at top, #1d151a 0%, var(--bg) 55%);
+            color: var(--text);
+        }
+
+        .app {
+            max-width: 1120px;
+            margin: 0 auto;
+        }
+
+        header {
+            display: flex;
+            flex-wrap: wrap;
+            align-items: center;
+            justify-content: space-between;
+            gap: 16px;
+            margin-bottom: 24px;
+        }
+
+        .brand {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+        }
+
+        .brand-badge {
+            width: 44px;
+            height: 44px;
+            border-radius: 12px;
+            background: linear-gradient(135deg, #ff2a38, #b80d1a);
+            display: grid;
+            place-items: center;
+            font-size: 1.2rem;
+            box-shadow: 0 8px 24px rgba(255, 42, 56, 0.28);
+        }
+
+        h1 {
+            margin: 0;
+            font-size: 1.65rem;
+            font-weight: 700;
+            letter-spacing: -0.02em;
+        }
+
+        .subtitle {
+            margin: 2px 0 0;
+            color: var(--muted);
+            font-size: 0.9rem;
+        }
+
+        .actions-bar {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 10px;
+        }
+
+        button {
+            appearance: none;
+            border: 1px solid var(--border);
+            background: var(--surface-2);
+            color: var(--text);
+            padding: 10px 16px;
+            border-radius: 10px;
+            font-size: 0.92rem;
+            font-weight: 600;
+            cursor: pointer;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            gap: 8px;
+            transition: transform 0.15s ease, background-color 0.2s ease, border-color 0.2s ease, opacity 0.2s ease;
+        }
+
+        button:hover:not(:disabled) {
+            background: #2c2c38;
+            border-color: rgba(255, 255, 255, 0.16);
+            transform: translateY(-1px);
+        }
+
+        button:disabled {
+            opacity: 0.4;
+            cursor: not-allowed;
+        }
+
+        .btn-primary {
+            background: var(--accent);
+            border-color: transparent;
+            color: #fff;
+            box-shadow: 0 6px 20px rgba(255, 42, 56, 0.25);
+        }
+
+        .btn-primary:hover:not(:disabled) {
+            background: var(--accent-hover);
+        }
+
+        .card {
+            background: var(--surface);
+            border: 1px solid var(--border);
+            border-radius: var(--radius);
+            padding: 18px;
+            box-shadow: 0 12px 32px rgba(0, 0, 0, 0.35);
+        }
+
+        .input-card {
+            margin-bottom: 24px;
+        }
+
+        textarea {
+            width: 100%;
+            min-height: 110px;
+            padding: 14px;
+            border-radius: 10px;
+            border: 1px solid var(--border);
+            background: var(--surface-2);
+            color: var(--text);
+            font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+            font-size: 0.88rem;
+            resize: vertical;
+            outline: none;
+        }
+
+        textarea:focus {
+            border-color: var(--accent);
+        }
+
+        .form-footer {
+            display: flex;
+            flex-wrap: wrap;
+            align-items: center;
+            justify-content: space-between;
+            gap: 12px;
+            margin-top: 12px;
+        }
+
+        .stats {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 10px;
+            font-size: 0.85rem;
+            color: var(--muted);
+        }
+
+        .stat-pill {
+            background: var(--surface-2);
+            border: 1px solid var(--border);
+            padding: 5px 10px;
+            border-radius: 999px;
+        }
+
+        .stat-pill strong {
+            color: var(--text);
+        }
+
+        .status-msg {
+            margin-top: 10px;
+            font-size: 0.86rem;
+            color: var(--muted);
+            min-height: 20px;
+        }
+
+        .player-section {
+            margin-bottom: 28px;
+        }
+
+        .player-frame-wrap {
+            position: relative;
+            width: 100%;
+            padding-bottom: 56.25%;
+            border-radius: var(--radius);
+            overflow: hidden;
+            background: #050507;
+            border: 1px solid var(--border);
+        }
+
+        #video-player {
+            position: absolute;
+            inset: 0;
+            width: 100%;
+            height: 100%;
+            border: 0;
+        }
+
+        .now-playing {
+            display: flex;
+            flex-wrap: wrap;
+            align-items: center;
+            justify-content: space-between;
+            gap: 12px;
+            margin-top: 14px;
+            padding-top: 14px;
+            border-top: 1px solid var(--border);
+        }
+
+        .now-playing-title {
+            font-weight: 700;
+            font-size: 1rem;
+        }
+
+        .now-playing-author {
+            font-size: 0.85rem;
+            color: var(--muted);
+        }
+
+        .playlist-header {
+            display: flex;
+            flex-wrap: wrap;
+            align-items: center;
+            justify-content: space-between;
+            gap: 10px;
+            margin-bottom: 14px;
+        }
+
+        .playlist-header h2 {
+            margin: 0;
+            font-size: 1.15rem;
+        }
+
+        .playlist-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
+            gap: 16px;
+        }
+
+        .video-card {
+            background: var(--surface);
+            border: 1px solid var(--border);
+            border-radius: 12px;
+            overflow: hidden;
+            display: flex;
+            flex-direction: column;
+            transition: transform 0.18s ease, border-color 0.2s ease, box-shadow 0.2s ease;
+        }
+
+        .video-card:hover {
+            transform: translateY(-3px);
+            border-color: rgba(255, 255, 255, 0.2);
+        }
+
+        .video-card.active {
+            border-color: var(--accent);
+            box-shadow: 0 0 0 1px var(--accent), 0 12px 28px rgba(255, 42, 56, 0.18);
+        }
+
+        .thumb-btn {
+            all: unset;
+            cursor: pointer;
+            display: block;
+            width: 100%;
+            position: relative;
+            aspect-ratio: 16 / 9;
+            background: #09090c;
+            overflow: hidden;
+        }
+
+        .thumb-btn img {
+            width: 100%;
+            height: 100%;
+            object-fit: cover;
+            display: block;
+        }
+
+        .video-index {
+            position: absolute;
+            top: 8px;
+            left: 8px;
+            background: rgba(15, 15, 18, 0.82);
+            backdrop-filter: blur(6px);
+            color: #fff;
+            font-size: 0.75rem;
+            font-weight: 700;
+            padding: 2px 8px;
+            border-radius: 6px;
+        }
+
+        .video-meta {
+            padding: 11px 12px;
+            display: flex;
+            flex-direction: column;
+            gap: 4px;
+            flex: 1;
+        }
+
+        .video-title {
+            font-size: 0.88rem;
+            font-weight: 600;
+            color: var(--text);
+            display: -webkit-box;
+            -webkit-line-clamp: 2;
+            -webkit-box-orient: vertical;
+            overflow: hidden;
+        }
+
+        .video-creator {
+            font-size: 0.78rem;
+            color: var(--muted);
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+        }
+
+        .video-actions {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            gap: 8px;
+            margin-top: auto;
+            padding-top: 8px;
+            border-top: 1px solid var(--border);
+        }
+
+        .play-link {
+            all: unset;
+            cursor: pointer;
+            font-size: 0.78rem;
+            font-weight: 600;
+            color: var(--text);
+            display: inline-flex;
+            align-items: center;
+            gap: 5px;
+        }
+
+        .play-link:hover {
+            color: var(--accent);
+        }
+
+        .ext-link {
+            font-size: 0.76rem;
+            color: var(--muted);
+            text-decoration: none;
+            display: inline-flex;
+            align-items: center;
+            gap: 4px;
+        }
+
+        .ext-link:hover {
+            color: var(--text);
+        }
+
+        .empty-state {
+            text-align: center;
+            padding: 32px 16px;
+            color: var(--muted);
+            border: 1px dashed var(--border);
+            border-radius: var(--radius);
+        }
+
+        @media (max-width: 600px) {
+            h1 {
+                font-size: 1.35rem;
+            }
+            .playlist-grid {
+                grid-template-columns: repeat(2, 1fr);
+                gap: 10px;
+            }
+            .video-meta {
+                padding: 9px 10px;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="app">
+        <header>
+            <div class="brand">
+                <div class="brand-badge"><i class="fab fa-youtube"></i></div>
+                <div>
+                    <h1>YouTube Playlist</h1>
+                    <p class="subtitle">Extraction presse-papiers, nettoyage de liens &amp; lecteur avec miniatures</p>
+                </div>
+            </div>
+            <div class="actions-bar">
+                <button type="button" id="analyzeBtn">
+                    <i class="fas fa-clipboard-check"></i> Lire &amp; nettoyer le presse-papiers
+                </button>
+                <button type="button" id="copyLinksBtn" disabled title="Copier les liens nettoyés">
+                    <i class="fas fa-link"></i> Copier liens
+                </button>
+                <button type="button" id="copyIdsBtn" disabled title="Copier les IDs">
+                    <i class="fas fa-fingerprint"></i> Copier IDs
+                </button>
+            </div>
+        </header>
+
+        <section class="card input-card">
+            <form id="playlist-form">
+                <textarea
+                    id="playlist-input"
+                    rows="4"
+                    placeholder="Collez ici vos liens YouTube ou le résultat d'un copier-coller..."></textarea>
+                <div class="form-footer">
+                    <div class="stats">
+                        <span class="stat-pill">Liens uniques : <strong id="count-stat">0</strong></span>
+                        <span class="stat-pill">Playlists : <strong id="playlist-stat">0</strong></span>
+                    </div>
+                    <div class="actions-bar">
+                        <button type="button" id="cleanOnlyBtn">
+                            <i class="fas fa-broom"></i> Nettoyer le texte
+                        </button>
+                        <button type="submit" class="btn-primary">
+                            <i class="fas fa-play"></i> Créer la playlist
+                        </button>
+                    </div>
+                </div>
+                <div id="status-msg" class="status-msg"></div>
+            </form>
+        </section>
+
+        <section class="card player-section">
+            <div class="player-frame-wrap">
+                <iframe
+                    id="video-player"
+                    src=""
+                    referrerpolicy="strict-origin-when-cross-origin"
+                    allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share"
+                    allowfullscreen>
+                </iframe>
+            </div>
+            <div class="now-playing">
+                <div>
+                    <div id="now-title" class="now-playing-title">Aucune vidéo chargée</div>
+                    <div id="now-author" class="now-playing-author">Ajoutez des liens puis cliquez sur « Créer la playlist »</div>
+                </div>
+                <a id="now-ext" class="ext-link" href="#" target="_blank" rel="noopener noreferrer" style="display:none;">
+                    Ouvrir sur YouTube <i class="fas fa-external-link-alt"></i>
+                </a>
+            </div>
+        </section>
+
+        <section>
+            <div class="playlist-header">
+                <h2>Votre liste (<span id="grid-count">0</span>)</h2>
+            </div>
+            <div id="playlist-container" class="playlist-grid">
+                <div class="empty-state">Les miniatures de votre playlist apparaîtront ici avec le titre et le créateur.</div>
+            </div>
+        </section>
+    </div>
+
+    <script>
+        let currentCleanUrls = [];
+        let currentIds = [];
+        let playlistItems = [];
+
+        function cleanSegment(raw) {
+            if (!raw) return "";
+            return raw.split("?")[0].split("&")[0].split("#")[0].replace(/[)\],.;!?'"`>]+$/g, "").trim();
+        }
+
+        function parseYouTubeTarget(rawUrl) {
+            if (!rawUrl) return null;
+            let candidate = rawUrl.replace(/[)\],.;!?'"`>]+$/g, "").trim();
+            if (!candidate) return null;
+
+            if (!/^https?:\/\//i.test(candidate)) {
+                candidate = "https://" + candidate;
+            }
+
+            try {
+                const parsed = new URL(candidate);
+                const host = parsed.hostname.replace(/^www\.|^m\.|^music\./i, "").toLowerCase();
+
+                let videoId = "";
+                let listId = parsed.searchParams.get("list") || "";
+
+                if (host === "youtu.be") {
+                    videoId = cleanSegment(parsed.pathname.replace(/^\/+/, "").split("/")[0]);
+                } else if (host.endsWith("youtube.com") || host.endsWith("youtube-nocookie.com")) {
+                    if (parsed.pathname.startsWith("/shorts/")) {
+                        videoId = cleanSegment(parsed.pathname.split("/shorts/")[1].split("/")[0]);
+                    } else if (parsed.pathname.startsWith("/embed/")) {
+                        videoId = cleanSegment(parsed.pathname.split("/embed/")[1].split("/")[0]);
+                    } else if (parsed.pathname.startsWith("/live/")) {
+                        videoId = cleanSegment(parsed.pathname.split("/live/")[1].split("/")[0]);
+                    } else if (parsed.searchParams.get("v")) {
+                        videoId = cleanSegment(parsed.searchParams.get("v"));
+                    }
+                }
+
+                if (videoId) {
+                    const cleanWatchUrl = "https://www.youtube.com/watch?v=" + encodeURIComponent(videoId);
+                    const embedSrc = listId
+                        ? "https://www.youtube.com/embed/" + encodeURIComponent(videoId) + "?list=" + encodeURIComponent(listId)
+                        : "https://www.youtube.com/embed/" + encodeURIComponent(videoId);
+
+                    return {
+                        type: "video",
+                        key: "V:" + videoId + (listId ? ":L:" + listId : ""),
+                        videoId: videoId,
+                        listId: listId,
+                        cleanUrl: cleanWatchUrl,
+                        embedSrc: embedSrc,
+                        thumb: "https://i.ytimg.com/vi/" + encodeURIComponent(videoId) + "/hqdefault.jpg"
+                    };
+                }
+
+                if (listId) {
+                    const cleanListUrl = "https://www.youtube.com/playlist?list=" + encodeURIComponent(listId);
+                    return {
+                        type: "playlist",
+                        key: "P:" + listId,
+                        videoId: "",
+                        listId: listId,
+                        cleanUrl: cleanListUrl,
+                        embedSrc: "https://www.youtube.com/embed?list=" + encodeURIComponent(listId),
+                        thumb: ""
+                    };
+                }
+            } catch (e) {
+                return null;
+            }
+
+            return null;
+        }
+
+        function extractFromHtmlAndText(content) {
+            const items = [];
+            const seen = new Set();
+
+            function addFromString(str) {
+                if (!str) return;
+                const matches = str.match(/(?:https?:\/\/)?(?:www\.|m\.|music\.)?(?:youtube\.com\/[^\s"'<>]+|youtube-nocookie\.com\/[^\s"'<>]+|youtu\.be\/[^\s"'<>]+)/gi) || [];
+                for (const m of matches) {
+                    const parsedItem = parseYouTubeTarget(m);
+                    if (parsedItem && !seen.has(parsedItem.key)) {
+                        seen.add(parsedItem.key);
+                        items.push(parsedItem);
+                    }
+                }
+            }
+
+            const tempDiv = document.createElement("div");
+            tempDiv.innerHTML = content || "";
+
+            const links = tempDiv.getElementsByTagName("a");
+            for (const link of links) {
+                if (link.href) {
+                    addFromString(link.href);
+                }
+            }
+
+            addFromString(tempDiv.textContent || "");
+            addFromString(content || "");
+
+            return items;
+        }
+
+        function updateStats(items) {
+            const playlistCount = items.filter(it => it.type === "playlist").length;
+            document.getElementById("count-stat").textContent = items.length;
+            document.getElementById("playlist-stat").textContent = playlistCount;
+            document.getElementById("grid-count").textContent = items.length;
+
+            currentCleanUrls = items.map(it => it.cleanUrl);
+            currentIds = items.map(it => it.videoId || it.listId).filter(Boolean);
+
+            const copyLinksBtn = document.getElementById("copyLinksBtn");
+            const copyIdsBtn = document.getElementById("copyIdsBtn");
+            copyLinksBtn.disabled = currentCleanUrls.length === 0;
+            copyIdsBtn.disabled = currentIds.length === 0;
+        }
+
+        function setStatus(msg) {
+            document.getElementById("status-msg").textContent = msg || "";
+        }
+
+        async function fetchVideoMetadata(item) {
+            if (item.type === "playlist") {
+                item.title = "Playlist YouTube (" + item.listId + ")";
+                item.author = "Playlist";
+                return item;
+            }
+
+            item.title = "Vidéo " + item.videoId;
+            item.author = "Créateur YouTube";
+
+            try {
+                const oembedUrl = "https://www.youtube.com/oembed?url=" + encodeURIComponent(item.cleanUrl) + "&format=json";
+                const res = await fetch(oembedUrl);
+                if (res.ok) {
+                    const data = await res.json();
+                    if (data.title) item.title = data.title;
+                    if (data.author_name) item.author = data.author_name;
+                    if (data.thumbnail_url) item.thumb = data.thumbnail_url;
+                }
+            } catch (err) {
+                // Garde le titre par défaut et la miniature i.ytimg.com en cas de blocage réseau
+            }
+
+            return item;
+        }
+
+        function loadIntoPlayer(index) {
+            if (!playlistItems[index]) return;
+            const item = playlistItems[index];
+
+            document.getElementById("video-player").src = item.embedSrc;
+            document.getElementById("now-title").textContent = item.title;
+            document.getElementById("now-author").textContent = item.author;
+
+            const extLink = document.getElementById("now-ext");
+            extLink.href = item.cleanUrl;
+            extLink.style.display = "inline-flex";
+
+            const cards = document.querySelectorAll(".video-card");
+            cards.forEach((card, idx) => {
+                card.classList.toggle("active", idx === index);
+            });
+        }
+
+        function renderPlaylist(items) {
+            playlistItems = items;
+            const container = document.getElementById("playlist-container");
+            container.innerHTML = "";
+
+            if (items.length === 0) {
+                container.innerHTML = '<div class="empty-state">Aucun lien YouTube valide détecté.</div>';
+                return;
+            }
+
+            items.forEach((item, index) => {
+                const card = document.createElement("article");
+                card.className = "video-card";
+
+                const thumbBtn = document.createElement("button");
+                thumbBtn.type = "button";
+                thumbBtn.className = "thumb-btn";
+                thumbBtn.title = "Lire : " + item.title;
+
+                const img = document.createElement("img");
+                img.src = item.thumb || "https://i.ytimg.com/vi/" + encodeURIComponent(item.videoId) + "/hqdefault.jpg";
+                img.alt = item.title;
+                img.loading = "lazy";
+
+                const badge = document.createElement("span");
+                badge.className = "video-index";
+                badge.textContent = "#" + (index + 1);
+
+                thumbBtn.appendChild(img);
+                thumbBtn.appendChild(badge);
+                thumbBtn.addEventListener("click", () => loadIntoPlayer(index));
+
+                const meta = document.createElement("div");
+                meta.className = "video-meta";
+
+                const titleEl = document.createElement("div");
+                titleEl.className = "video-title";
+                titleEl.textContent = item.title;
+                titleEl.title = item.title;
+
+                const creatorEl = document.createElement("div");
+                creatorEl.className = "video-creator";
+                creatorEl.textContent = item.author;
+                creatorEl.title = item.author;
+
+                const actions = document.createElement("div");
+                actions.className = "video-actions";
+
+                const playBtn = document.createElement("button");
+                playBtn.type = "button";
+                playBtn.className = "play-link";
+                playBtn.innerHTML = '<i class="fas fa-play"></i> Lire';
+                playBtn.addEventListener("click", () => loadIntoPlayer(index));
+
+                const ext = document.createElement("a");
+                ext.className = "ext-link";
+                ext.href = item.cleanUrl;
+                ext.target = "_blank";
+                ext.rel = "noopener noreferrer";
+                ext.innerHTML = 'YouTube <i class="fas fa-external-link-alt"></i>';
+
+                actions.appendChild(playBtn);
+                actions.appendChild(ext);
+
+                meta.appendChild(titleEl);
+                meta.appendChild(creatorEl);
+                meta.appendChild(actions);
+
+                card.appendChild(thumbBtn);
+                card.appendChild(meta);
+                container.appendChild(card);
+            });
+        }
+
+        async function buildPlaylistFromRaw(rawText) {
+            const items = extractFromHtmlAndText(rawText);
+            updateStats(items);
+
+            if (items.length === 0) {
+                renderPlaylist([]);
+                setStatus("Aucun lien YouTube trouvé dans le contenu fourni.");
+                return;
+            }
+
+            document.getElementById("playlist-input").value = items.map(it => it.cleanUrl).join("\n");
+            setStatus("Chargement des titres et créateurs...");
+            renderPlaylist(items);
+            loadIntoPlayer(0);
+
+            await Promise.all(items.map(item => fetchVideoMetadata(item)));
+            renderPlaylist(items);
+            loadIntoPlayer(0);
+            setStatus(items.length + " élément(s) nettoyé(s) et prêt(s) à la lecture.");
+        }
+
+        document.getElementById("analyzeBtn").addEventListener("click", async function() {
+            setStatus("Lecture du presse-papiers...");
+            try {
+                let aggregated = "";
+                if (navigator.clipboard && navigator.clipboard.read) {
+                    const clipboardContent = await navigator.clipboard.read();
+                    for (const item of clipboardContent) {
+                        for (const type of item.types) {
+                            const blob = await item.getType(type);
+                            const text = await blob.text();
+                            aggregated += "\n" + text;
+                        }
+                    }
+                } else if (navigator.clipboard && navigator.clipboard.readText) {
+                    aggregated = await navigator.clipboard.readText();
+                } else {
+                    throw new Error("API presse-papiers indisponible");
+                }
+
+                await buildPlaylistFromRaw(aggregated);
+            } catch (err) {
+                setStatus("Accès direct au presse-papiers refusé ou indisponible : collez avec Ctrl+V dans la zone ci-dessous puis cliquez sur « Créer la playlist ».");
+            }
+        });
+
+        document.getElementById("cleanOnlyBtn").addEventListener("click", function() {
+            const raw = document.getElementById("playlist-input").value;
+            const items = extractFromHtmlAndText(raw);
+            updateStats(items);
+            if (items.length > 0) {
+                document.getElementById("playlist-input").value = items.map(it => it.cleanUrl).join("\n");
+                setStatus(items.length + " lien(s) nettoyé(s) dans la zone de texte.");
+            } else {
+                setStatus("Aucun lien YouTube détecté à nettoyer.");
+            }
+        });
+
+        document.getElementById("playlist-form").addEventListener("submit", async function(e) {
+            e.preventDefault();
+            const raw = document.getElementById("playlist-input").value;
+            await buildPlaylistFromRaw(raw);
+        });
+
+        document.getElementById("copyLinksBtn").addEventListener("click", function() {
+            if (!currentCleanUrls.length) return;
+            navigator.clipboard.writeText(currentCleanUrls.join("\n")).then(() => {
+                setStatus("Liens nettoyés copiés dans le presse-papiers.");
+            });
+        });
+
+        document.getElementById("copyIdsBtn").addEventListener("click", function() {
+            if (!currentIds.length) return;
+            navigator.clipboard.writeText(currentIds.join("\n")).then(() => {
+                setStatus("IDs copiés dans le presse-papiers.");
+            });
+        });
+    </script>
+</body>
+</html>
