@@ -494,6 +494,7 @@
                 <div>
                     <div id="now-title" class="now-playing-title">Aucune vidéo chargée</div>
                     <div id="now-author" class="now-playing-author">Ajoutez des liens puis cliquez sur « Créer la playlist »</div>
+                    <div id="now-timecode" class="now-playing-author" style="margin-top: 4px; font-variant-numeric: tabular-nums;">00:00 / 00:00</div>
                 </div>
                 <a id="now-ext" class="ext-link" href="#" target="_blank" rel="noopener noreferrer" style="display:none;">
                     Ouvrir sur YouTube <i class="fas fa-external-link-alt"></i>
@@ -536,9 +537,168 @@
         let draggedIndex = null;
         let ytPlayer = null;
         let ytApiReady = false;
+        let pendingPlayerItem = null;
+        let pendingAutoplay = true;
+        let timecodeTimer = null;
+        let advancingFromTimecode = false;
+        let playerReady = false;
+
+        function formatTimecode(seconds) {
+            if (!Number.isFinite(seconds) || seconds < 0) return "00:00";
+            const total = Math.floor(seconds);
+            const h = Math.floor(total / 3600);
+            const m = Math.floor((total % 3600) / 60);
+            const s = total % 60;
+            if (h > 0) {
+                return `${h}:${String(m).padStart(2, "0")}:${String(s).padStart(2, "0")}`;
+            }
+            return `${String(m).padStart(2, "0")}:${String(s).padStart(2, "0")}`;
+        }
+
+        function updateTimecodeDisplay(currentSec, durationSec) {
+            const el = document.getElementById("now-timecode");
+            if (!el) return;
+            el.textContent = `${formatTimecode(currentSec)} / ${formatTimecode(durationSec)}`;
+        }
+
+        function stopTimecodeWatcher() {
+            if (timecodeTimer !== null) {
+                clearInterval(timecodeTimer);
+                timecodeTimer = null;
+            }
+        }
+
+        function triggerAutoNextFromEnd() {
+            if (advancingFromTimecode) return;
+            advancingFromTimecode = true;
+            stopTimecodeWatcher();
+            if (autoAdvance) {
+                playNext(true);
+            }
+        }
+
+        function startTimecodeWatcher() {
+            stopTimecodeWatcher();
+            timecodeTimer = setInterval(() => {
+                if (!ytPlayer || !playerReady) return;
+                if (typeof ytPlayer.getCurrentTime !== "function" || typeof ytPlayer.getDuration !== "function") {
+                    return;
+                }
+                const current = ytPlayer.getCurrentTime();
+                const duration = ytPlayer.getDuration();
+                if (Number.isFinite(current) && Number.isFinite(duration) && duration > 0) {
+                    updateTimecodeDisplay(current, duration);
+                    if (autoAdvance && !advancingFromTimecode && current >= duration - 0.4) {
+                        triggerAutoNextFromEnd();
+                    }
+                }
+            }, 250);
+        }
+
+        function buildEmbedUrlForItem(item, shouldAutoplay) {
+            if (item.type === "playlist") {
+                return "https://www.youtube.com/embed?list=" + encodeURIComponent(item.listId) + "&enablejsapi=1";
+            }
+            const params = new URLSearchParams({
+                enablejsapi: "1",
+                autoplay: shouldAutoplay ? "1" : "0"
+            });
+            if (item.listId) params.set("list", item.listId);
+            if (window.location.origin && window.location.origin !== "null") {
+                params.set("origin", window.location.origin);
+            }
+            return "https://www.youtube.com/embed/" + encodeURIComponent(item.videoId) + "?" + params.toString();
+        }
+
+        function initOrUpdatePlayer(item, shouldAutoplay) {
+            advancingFromTimecode = false;
+
+            if (!item || item.type !== "video" || !item.videoId) {
+                stopTimecodeWatcher();
+                updateTimecodeDisplay(0, 0);
+                document.getElementById("video-player").src = buildEmbedUrlForItem(item, shouldAutoplay);
+                return;
+            }
+
+            if (!ytApiReady || !window.YT || !window.YT.Player) {
+                pendingPlayerItem = item;
+                pendingAutoplay = shouldAutoplay;
+                stopTimecodeWatcher();
+                updateTimecodeDisplay(0, 0);
+                document.getElementById("video-player").src = buildEmbedUrlForItem(item, shouldAutoplay);
+                return;
+            }
+
+            pendingPlayerItem = null;
+
+            if (!ytPlayer) {
+                playerReady = false;
+                const playerVars = {
+                    autoplay: shouldAutoplay ? 1 : 0,
+                    enablejsapi: 1,
+                    playsinline: 1
+                };
+                if (item.listId) {
+                    playerVars.list = item.listId;
+                }
+                if (window.location.origin && window.location.origin !== "null") {
+                    playerVars.origin = window.location.origin;
+                }
+
+                ytPlayer = new window.YT.Player("video-player", {
+                    videoId: item.videoId,
+                    playerVars: playerVars,
+                    events: {
+                        onReady: function(event) {
+                            playerReady = true;
+                            if (shouldAutoplay && typeof event.target.playVideo === "function") {
+                                event.target.playVideo();
+                            }
+                            startTimecodeWatcher();
+                        },
+                        onStateChange: function(event) {
+                            if (event.data === window.YT.PlayerState.PLAYING) {
+                                advancingFromTimecode = false;
+                                startTimecodeWatcher();
+                            } else if (event.data === window.YT.PlayerState.PAUSED) {
+                                if (typeof ytPlayer.getCurrentTime === "function" && typeof ytPlayer.getDuration === "function") {
+                                    updateTimecodeDisplay(ytPlayer.getCurrentTime(), ytPlayer.getDuration());
+                                }
+                            } else if (event.data === window.YT.PlayerState.ENDED) {
+                                triggerAutoNextFromEnd();
+                            }
+                        },
+                        onError: function(event) {
+                            stopTimecodeWatcher();
+                            setStatus("Erreur lecteur YouTube (code " + event.data + ").");
+                        }
+                    }
+                });
+                return;
+            }
+
+            if (playerReady && typeof ytPlayer.loadVideoById === "function") {
+                if (shouldAutoplay) {
+                    ytPlayer.loadVideoById(item.videoId);
+                } else if (typeof ytPlayer.cueVideoById === "function") {
+                    ytPlayer.cueVideoById(item.videoId);
+                }
+                startTimecodeWatcher();
+            } else {
+                pendingPlayerItem = item;
+                pendingAutoplay = shouldAutoplay;
+                document.getElementById("video-player").src = buildEmbedUrlForItem(item, shouldAutoplay);
+            }
+        }
 
         function onYouTubeIframeAPIReady() {
             ytApiReady = true;
+            if (pendingPlayerItem && pendingPlayerItem.type === "video" && pendingPlayerItem.videoId) {
+                const nextItem = pendingPlayerItem;
+                const nextAutoplay = pendingAutoplay;
+                pendingPlayerItem = null;
+                initOrUpdatePlayer(nextItem, nextAutoplay);
+            }
         }
         window.onYouTubeIframeAPIReady = onYouTubeIframeAPIReady;
 
@@ -707,34 +867,14 @@
             return item;
         }
 
-        function attachYtPlayerListener() {
-            if (!ytApiReady || !window.YT || !window.YT.Player) return;
-            try {
-                if (!ytPlayer) {
-                    ytPlayer = new window.YT.Player("video-player", {
-                        events: {
-                            onStateChange: function(event) {
-                                if (event.data === window.YT.PlayerState.ENDED && autoAdvance) {
-                                    playNext(true);
-                                }
-                            }
-                        }
-                    });
-                }
-            } catch (e) {
-                // Ignore si l'iframe n'est pas encore prête pour l'API YT
-            }
-        }
-
         function loadIntoPlayer(index, shouldAutoplay = true) {
             if (!playlistItems[index]) return;
             currentIndex = index;
             const item = playlistItems[index];
 
-            const baseSrc = item.embedSrc.replace(/([?&])autoplay=[01]/, "$1autoplay=" + (shouldAutoplay ? "1" : "0"));
-            document.getElementById("video-player").src = baseSrc;
             document.getElementById("now-title").textContent = item.title;
             document.getElementById("now-author").textContent = item.author + " • #" + (index + 1) + " / " + playlistItems.length;
+            updateTimecodeDisplay(0, 0);
 
             const extLink = document.getElementById("now-ext");
             extLink.href = item.cleanUrl;
@@ -745,7 +885,7 @@
             });
 
             updateNavButtons();
-            setTimeout(attachYtPlayerListener, 350);
+            initOrUpdatePlayer(item, shouldAutoplay);
         }
 
         function playNext(fromEnded = false) {
@@ -804,6 +944,9 @@
 
             if (playlistItems.length === 0) {
                 currentIndex = -1;
+                pendingPlayerItem = null;
+                stopTimecodeWatcher();
+                updateTimecodeDisplay(0, 0);
                 document.getElementById("video-player").src = "";
                 document.getElementById("now-title").textContent = "Aucune vidéo chargée";
                 document.getElementById("now-author").textContent = "Ajoutez des liens puis cliquez sur « Créer la playlist »";
