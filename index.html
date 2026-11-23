@@ -588,7 +588,7 @@
                 const duration = ytPlayer.getDuration();
                 if (Number.isFinite(current) && Number.isFinite(duration) && duration > 0) {
                     updateTimecodeDisplay(current, duration);
-                    if (autoAdvance && !advancingFromTimecode && current >= duration - 0.4) {
+                    if (autoAdvance && !advancingFromTimecode && current >= duration - 1.0) {
                         triggerAutoNextFromEnd();
                     }
                 }
@@ -616,8 +616,18 @@
             if (!item || item.type !== "video" || !item.videoId) {
                 stopTimecodeWatcher();
                 updateTimecodeDisplay(0, 0);
-                document.getElementById("video-player").src = buildEmbedUrlForItem(item, shouldAutoplay);
+                const el = document.getElementById("video-player");
+                if (el && el.tagName && el.tagName.toLowerCase() === "iframe") {
+                    el.src = buildEmbedUrlForItem(item, shouldAutoplay);
+                } else if (ytPlayer && typeof ytPlayer.getIframe === "function") {
+                    const frame = ytPlayer.getIframe();
+                    if (frame) frame.src = buildEmbedUrlForItem(item, shouldAutoplay);
+                }
                 return;
+            }
+
+            if (window.YT && window.YT.Player) {
+                ytApiReady = true;
             }
 
             if (!ytApiReady || !window.YT || !window.YT.Player) {
@@ -625,70 +635,97 @@
                 pendingAutoplay = shouldAutoplay;
                 stopTimecodeWatcher();
                 updateTimecodeDisplay(0, 0);
-                document.getElementById("video-player").src = buildEmbedUrlForItem(item, shouldAutoplay);
+                const el = document.getElementById("video-player");
+                if (el && el.tagName && el.tagName.toLowerCase() === "iframe") {
+                    el.src = buildEmbedUrlForItem(item, shouldAutoplay);
+                }
                 return;
             }
 
             pendingPlayerItem = null;
 
             if (!ytPlayer) {
-                playerReady = false;
-                const playerVars = {
-                    autoplay: shouldAutoplay ? 1 : 0,
-                    enablejsapi: 1,
-                    playsinline: 1
-                };
-                if (item.listId) {
-                    playerVars.list = item.listId;
-                }
-                if (window.location.origin && window.location.origin !== "null") {
-                    playerVars.origin = window.location.origin;
-                }
-
-                ytPlayer = new window.YT.Player("video-player", {
-                    videoId: item.videoId,
-                    playerVars: playerVars,
-                    events: {
-                        onReady: function(event) {
-                            playerReady = true;
-                            if (shouldAutoplay && typeof event.target.playVideo === "function") {
-                                event.target.playVideo();
-                            }
-                            startTimecodeWatcher();
-                        },
-                        onStateChange: function(event) {
-                            if (event.data === window.YT.PlayerState.PLAYING) {
-                                advancingFromTimecode = false;
-                                startTimecodeWatcher();
-                            } else if (event.data === window.YT.PlayerState.PAUSED) {
-                                if (typeof ytPlayer.getCurrentTime === "function" && typeof ytPlayer.getDuration === "function") {
-                                    updateTimecodeDisplay(ytPlayer.getCurrentTime(), ytPlayer.getDuration());
-                                }
-                            } else if (event.data === window.YT.PlayerState.ENDED) {
-                                triggerAutoNextFromEnd();
-                            }
-                        },
-                        onError: function(event) {
-                            stopTimecodeWatcher();
-                            setStatus("Erreur lecteur YouTube (code " + event.data + ").");
-                        }
-                    }
-                });
+                createYtPlayerForItem(item, shouldAutoplay);
                 return;
             }
 
             if (playerReady && typeof ytPlayer.loadVideoById === "function") {
                 if (shouldAutoplay) {
-                    ytPlayer.loadVideoById(item.videoId);
+                    ytPlayer.loadVideoById({
+                        videoId: item.videoId,
+                        startSeconds: 0
+                    });
                 } else if (typeof ytPlayer.cueVideoById === "function") {
-                    ytPlayer.cueVideoById(item.videoId);
+                    ytPlayer.cueVideoById({
+                        videoId: item.videoId,
+                        startSeconds: 0
+                    });
                 }
                 startTimecodeWatcher();
             } else {
                 pendingPlayerItem = item;
                 pendingAutoplay = shouldAutoplay;
-                document.getElementById("video-player").src = buildEmbedUrlForItem(item, shouldAutoplay);
+                createYtPlayerForItem(item, shouldAutoplay);
             }
+        }
+
+        function createYtPlayerForItem(item, shouldAutoplay) {
+            const holder = document.getElementById("video-player");
+            if (!holder) return;
+
+            let targetContainer = holder;
+            if (holder.tagName && holder.tagName.toLowerCase() === "iframe") {
+                const div = document.createElement("div");
+                div.id = "video-player";
+                holder.replaceWith(div);
+                targetContainer = div;
+            }
+
+            playerReady = false;
+            const playerVars = {
+                autoplay: shouldAutoplay ? 1 : 0,
+                enablejsapi: 1,
+                playsinline: 1,
+                rel: 0
+            };
+            if (item.listId) {
+                playerVars.list = item.listId;
+            }
+            if (window.location.origin && window.location.origin !== "null") {
+                playerVars.origin = window.location.origin;
+            }
+
+            ytPlayer = new window.YT.Player(targetContainer.id, {
+                videoId: item.videoId,
+                playerVars: playerVars,
+                events: {
+                    onReady: function(event) {
+                        playerReady = true;
+                        if (shouldAutoplay && typeof event.target.playVideo === "function") {
+                            event.target.playVideo();
+                        }
+                        startTimecodeWatcher();
+                    },
+                    onStateChange: function(event) {
+                        if (event.data === window.YT.PlayerState.PLAYING) {
+                            advancingFromTimecode = false;
+                            startTimecodeWatcher();
+                        } else if (event.data === window.YT.PlayerState.BUFFERING || event.data === window.YT.PlayerState.CUED) {
+                            advancingFromTimecode = false;
+                        } else if (event.data === window.YT.PlayerState.PAUSED) {
+                            if (typeof ytPlayer.getCurrentTime === "function" && typeof ytPlayer.getDuration === "function") {
+                                updateTimecodeDisplay(ytPlayer.getCurrentTime(), ytPlayer.getDuration());
+                            }
+                        } else if (event.data === window.YT.PlayerState.ENDED) {
+                            triggerAutoNextFromEnd();
+                        }
+                    },
+                    onError: function(event) {
+                        stopTimecodeWatcher();
+                        setStatus("Erreur lecteur YouTube (code " + event.data + ").");
+                    }
+                }
+            });
         }
 
         function onYouTubeIframeAPIReady() {
@@ -703,6 +740,10 @@
         window.onYouTubeIframeAPIReady = onYouTubeIframeAPIReady;
 
         (function loadYtApi() {
+            if (window.YT && window.YT.Player) {
+                ytApiReady = true;
+                return;
+            }
             const tag = document.createElement("script");
             tag.src = "https://www.youtube.com/iframe_api";
             document.head.appendChild(tag);
