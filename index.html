@@ -880,7 +880,8 @@
             state.ids = state.items.map(it => it.videoId || it.listId).filter(Boolean);
 
             if (state.cleanUrls.length > 0) {
-                dom.input.value = state.cleanUrls.join("\n");
+                dom.input.value = state.cleanUrls.join("
+");
             }
 
             dom.copyLinksBtn.disabled = state.cleanUrls.length === 0;
@@ -1156,7 +1157,8 @@
                     for (const entry of clipboardContent) {
                         for (const type of entry.types) {
                             const blob = await entry.getType(type);
-                            aggregated += "\n" + await blob.text();
+                            aggregated += "
+" + await blob.text();
                         }
                     }
                 } else if (navigator.clipboard && navigator.clipboard.readText) {
@@ -1190,14 +1192,16 @@
 
         dom.copyLinksBtn.addEventListener("click", function() {
             if (!state.cleanUrls.length) return;
-            navigator.clipboard.writeText(state.cleanUrls.join("\n")).then(() => {
+            navigator.clipboard.writeText(state.cleanUrls.join("
+")).then(() => {
                 setStatus("Liens nettoyés (dans l'ordre actuel) copiés dans le presse-papiers.");
             });
         });
 
         dom.copyIdsBtn.addEventListener("click", function() {
             if (!state.ids.length) return;
-            navigator.clipboard.writeText(state.ids.join("\n")).then(() => {
+            navigator.clipboard.writeText(state.ids.join("
+")).then(() => {
                 setStatus("IDs (dans l'ordre actuel) copiés dans le presse-papiers.");
             });
         });
